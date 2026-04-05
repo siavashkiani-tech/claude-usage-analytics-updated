@@ -61,18 +61,19 @@ MODEL_MULTIPLIERS = {
 # Source: anthropic.com/pricing — April 2026
 # ---------------------------------------------------------------------------
 MODEL_API_PRICING = {
-    "claude-opus-4.6": {"input": 5.00, "output": 25.00, "cache_read": 0.50, "cache_write": 6.25},
-    "claude-opus-4.5": {"input": 15.00, "output": 75.00, "cache_read": 1.50, "cache_write": 18.75},
-    "claude-opus-4": {"input": 15.00, "output": 75.00, "cache_read": 1.50, "cache_write": 18.75},
-    "claude-opus": {"input": 15.00, "output": 75.00, "cache_read": 1.50, "cache_write": 18.75},
-    "claude-sonnet-4.6": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 3.75},
-    "claude-sonnet-4.5": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 3.75},
-    "claude-sonnet-4": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 3.75},
-    "claude-sonnet": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 3.75},
-    "claude-haiku-4.5": {"input": 0.80, "output": 4.00, "cache_read": 0.08, "cache_write": 1.00},
-    "claude-haiku-4": {"input": 0.80, "output": 4.00, "cache_read": 0.08, "cache_write": 1.00},
-    "claude-haiku": {"input": 0.80, "output": 4.00, "cache_read": 0.08, "cache_write": 1.00},
-    "_default": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 3.75},
+    # cache_write = 2.0x input (1-hour cache, Claude Code / Copilot default)
+    "claude-opus-4.6": {"input": 5.00, "output": 25.00, "cache_read": 0.50, "cache_write": 10.00},
+    "claude-opus-4.5": {"input": 15.00, "output": 75.00, "cache_read": 1.50, "cache_write": 30.00},
+    "claude-opus-4": {"input": 15.00, "output": 75.00, "cache_read": 1.50, "cache_write": 30.00},
+    "claude-opus": {"input": 15.00, "output": 75.00, "cache_read": 1.50, "cache_write": 30.00},
+    "claude-sonnet-4.6": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 6.00},
+    "claude-sonnet-4.5": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 6.00},
+    "claude-sonnet-4": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 6.00},
+    "claude-sonnet": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 6.00},
+    "claude-haiku-4.5": {"input": 1.00, "output": 5.00, "cache_read": 0.10, "cache_write": 2.00},
+    "claude-haiku-4": {"input": 1.00, "output": 5.00, "cache_read": 0.10, "cache_write": 2.00},
+    "claude-haiku": {"input": 1.00, "output": 5.00, "cache_read": 0.10, "cache_write": 2.00},
+    "_default": {"input": 3.00, "output": 15.00, "cache_read": 0.30, "cache_write": 6.00},
 }
 
 # Ratios derived from sessions that have full token data via shutdown events.
