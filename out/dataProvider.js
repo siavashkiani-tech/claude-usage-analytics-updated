@@ -483,6 +483,40 @@ function getUsageData() {
             defaultData.models = models.sort((a, b) => b.tokens - a.tokens).slice(0, 5);
             // Note: Cache efficiency is already calculated from modelUsage above, don't overwrite
         }
+        // === OVERRIDE MODEL BREAKDOWN FROM SQLITE (more complete than stats-cache) ===
+        if (dbInitialized) {
+            try {
+                const allModelUsage = (0, database_1.getAllModelUsage)();
+                if (allModelUsage.length > 0) {
+                    const sqliteModelTotals = {};
+                    for (const record of allModelUsage) {
+                        const total = record.inputTokens + record.outputTokens + record.cacheReadTokens + record.cacheWriteTokens;
+                        sqliteModelTotals[record.model] = (sqliteModelTotals[record.model] || 0) + total;
+                    }
+                    let sqliteGrandTotal = 0;
+                    const sqliteModels = [];
+                    for (const [modelName, tokens] of Object.entries(sqliteModelTotals)) {
+                        sqliteGrandTotal += tokens;
+                        sqliteModels.push({
+                            name: formatModelName(modelName),
+                            tokens: tokens,
+                            percentage: 0,
+                            color: getModelColor(modelName)
+                        });
+                    }
+                    for (const model of sqliteModels) {
+                        model.percentage = sqliteGrandTotal > 0 ? (model.tokens / sqliteGrandTotal) * 100 : 0;
+                    }
+                    // Use SQLite models if they have more entries (more complete data)
+                    if (sqliteModels.length > defaultData.models.length) {
+                        defaultData.models = sqliteModels.sort((a, b) => b.tokens - a.tokens).slice(0, 10);
+                    }
+                }
+            }
+            catch (e) {
+                // Fall back to stats-cache models
+            }
+        }
         // === DAILY HISTORY (from dailyActivity + dailyModelTokens) ===
         const todayStr = getLocalDateString();
         const yesterdayDate = new Date();
