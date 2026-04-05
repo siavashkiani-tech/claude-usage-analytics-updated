@@ -23,18 +23,18 @@ function getModelPricing(modelId) {
     return MODEL_PRICING['default'];
 }
 
-function calculateCost(inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, modelId) {
+function calculateCost(inputTokens, outputTokens, cacheReadTokens, cacheWrite5m, cacheWrite1h, webSearches, modelId) {
     const pricing = getModelPricing(modelId);
-    // Cache tokens are much cheaper
-    const cacheReadRate = pricing.input * 0.1;  // 90% discount for cache reads
-    const cacheWriteRate = pricing.input * 1.25; // 25% more for cache writes
+    const cacheReadRate = pricing.input * 0.1;     // 90% discount for cache reads
+    const cacheWrite5mRate = pricing.input * 1.25;  // 25% premium for 5m cache writes
+    const cacheWrite1hRate = pricing.input * 2.0;   // 100% premium for 1h cache writes
 
-    const inputCost = (inputTokens / 1_000_000) * pricing.input;
-    const outputCost = (outputTokens / 1_000_000) * pricing.output;
-    const cacheReadCost = (cacheReadTokens / 1_000_000) * cacheReadRate;
-    const cacheWriteCost = (cacheWriteTokens / 1_000_000) * cacheWriteRate;
-
-    return inputCost + outputCost + cacheReadCost + cacheWriteCost;
+    return (inputTokens / 1_000_000) * pricing.input +
+           (outputTokens / 1_000_000) * pricing.output +
+           (cacheReadTokens / 1_000_000) * cacheReadRate +
+           (cacheWrite5m / 1_000_000) * cacheWrite5mRate +
+           (cacheWrite1h / 1_000_000) * cacheWrite1hRate +
+           (webSearches * 0.01);
 }
 
 function getTodayDateString() {
@@ -114,6 +114,13 @@ function scanJsonlFiles() {
                             const outputTokens = usage.output_tokens || 0;
                             const cacheReadTokens = usage.cache_read_input_tokens || 0;
                             const cacheWriteTokens = usage.cache_creation_input_tokens || 0;
+                            // Distinguish 5m vs 1h cache writes
+                            const cacheCreation = usage.cache_creation || {};
+                            const cw5m = cacheCreation.ephemeral_5m_input_tokens || 0;
+                            const cw1h = cacheCreation.ephemeral_1h_input_tokens || 0;
+                            const cacheWrite5m = (cw5m || cw1h) ? cw5m : 0;
+                            const cacheWrite1h = (cw5m || cw1h) ? cw1h : cacheWriteTokens;
+                            const webSearches = usage.server_tool_use?.web_search_requests || 0;
 
                             stats.inputTokens += inputTokens;
                             stats.outputTokens += outputTokens;
@@ -121,9 +128,9 @@ function scanJsonlFiles() {
                             stats.cacheWriteTokens += cacheWriteTokens;
                             stats.totalTokens += inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens;
 
-                            // Get model and calculate cost (with cache token discounts)
+                            // Get model and calculate cost (with correct cache tier rates)
                             const model = entry.message?.model || entry.model || 'default';
-                            const cost = calculateCost(inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, model);
+                            const cost = calculateCost(inputTokens, outputTokens, cacheReadTokens, cacheWrite5m, cacheWrite1h, webSearches, model);
                             stats.cost += cost;
 
                             // Track by model (with full token breakdown for SQLite persistence)

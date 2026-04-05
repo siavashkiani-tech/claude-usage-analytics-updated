@@ -30,15 +30,18 @@ function getModelPricing(modelId) {
     return MODEL_PRICING['default'];
 }
 
-function calculateCost(inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, modelId) {
+function calculateCost(inputTokens, outputTokens, cacheReadTokens, cacheWrite5m, cacheWrite1h, webSearches, modelId) {
     const pricing = getModelPricing(modelId);
-    const cacheReadRate = pricing.input * 0.1;   // 90% discount for cache reads
-    const cacheWriteRate = pricing.input * 1.25; // 25% more for cache writes
+    const cacheReadRate = pricing.input * 0.1;    // 90% discount for cache reads
+    const cacheWrite5mRate = pricing.input * 1.25; // 25% premium for 5m cache writes
+    const cacheWrite1hRate = pricing.input * 2.0;  // 100% premium for 1h cache writes
 
     return (inputTokens / 1_000_000) * pricing.input +
            (outputTokens / 1_000_000) * pricing.output +
            (cacheReadTokens / 1_000_000) * cacheReadRate +
-           (cacheWriteTokens / 1_000_000) * cacheWriteRate;
+           (cacheWrite5m / 1_000_000) * cacheWrite5mRate +
+           (cacheWrite1h / 1_000_000) * cacheWrite1hRate +
+           (webSearches * 0.01);
 }
 
 // Parse command line arguments
@@ -123,7 +126,16 @@ async function processFile(filePath) {
                 const inputTokens = usage.input_tokens || 0;
                 const outputTokens = usage.output_tokens || 0;
                 const cacheReadTokens = usage.cache_read_input_tokens || 0;
-                const cacheWriteTokens = usage.cache_creation_input_tokens || 0;
+                // Distinguish 5m vs 1h cache writes (1h is 2x input, 5m is 1.25x)
+                const cacheCreation = usage.cache_creation || {};
+                const cacheWrite5m = cacheCreation.ephemeral_5m_input_tokens || 0;
+                const cacheWrite1h = cacheCreation.ephemeral_1h_input_tokens || 0;
+                // Fallback: if no breakdown, treat all as 1h (Claude Code default)
+                const totalCacheWrite = usage.cache_creation_input_tokens || 0;
+                const cacheWrite5mFinal = (cacheWrite5m || cacheWrite1h) ? cacheWrite5m : 0;
+                const cacheWrite1hFinal = (cacheWrite5m || cacheWrite1h) ? cacheWrite1h : totalCacheWrite;
+                // Web search costs
+                const webSearches = usage.server_tool_use?.web_search_requests || 0;
 
                 // Initialize date bucket
                 if (!dailyData[date]) {
@@ -136,7 +148,10 @@ async function processFile(filePath) {
                         input: 0,
                         output: 0,
                         cacheRead: 0,
+                        cacheWrite5m: 0,
+                        cacheWrite1h: 0,
                         cacheWrite: 0,
+                        webSearches: 0,
                         messages: 0
                     };
                 }
@@ -145,7 +160,10 @@ async function processFile(filePath) {
                 dailyData[date][model].input += inputTokens;
                 dailyData[date][model].output += outputTokens;
                 dailyData[date][model].cacheRead += cacheReadTokens;
-                dailyData[date][model].cacheWrite += cacheWriteTokens;
+                dailyData[date][model].cacheWrite5m += cacheWrite5mFinal;
+                dailyData[date][model].cacheWrite1h += cacheWrite1hFinal;
+                dailyData[date][model].cacheWrite += totalCacheWrite;
+                dailyData[date][model].webSearches += webSearches;
                 dailyData[date][model].messages++;
 
             } catch (e) {
@@ -176,12 +194,15 @@ function mergeResults(global, dailyData, sessionsPerDate, sessionDir, activeDate
         }
         for (const [model, data] of Object.entries(models)) {
             if (!global[date][model]) {
-                global[date][model] = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, messages: 0 };
+                global[date][model] = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cacheWrite5m: 0, cacheWrite1h: 0, webSearches: 0, messages: 0 };
             }
             global[date][model].input += data.input;
             global[date][model].output += data.output;
             global[date][model].cacheRead += data.cacheRead;
             global[date][model].cacheWrite += data.cacheWrite;
+            global[date][model].cacheWrite5m += data.cacheWrite5m;
+            global[date][model].cacheWrite1h += data.cacheWrite1h;
+            global[date][model].webSearches += data.webSearches;
             global[date][model].messages += data.messages;
         }
     }
@@ -244,7 +265,7 @@ async function main() {
         const modelBreakdown = [];
 
         for (const [model, data] of Object.entries(models)) {
-            const cost = calculateCost(data.input, data.output, data.cacheRead, data.cacheWrite, model);
+            const cost = calculateCost(data.input, data.output, data.cacheRead, data.cacheWrite5m, data.cacheWrite1h, data.webSearches, model);
 
             dayMessages += data.messages;
             dayInput += data.input;

@@ -621,14 +621,14 @@ function clearHistoryBeforeDate(beforeDate) {
     }
 }
 // Model pricing helper (duplicated from dataProvider to avoid circular deps)
-// Cache rates: cache_read = input * 0.1 (90% discount), cache_write = input * 1.25 (25% premium)
+// Cache rates: cache_read = input * 0.1 (90% discount), cache_write = input * 2.0 (1h cache, Claude Code default)
 const MODEL_PRICING = {
-    'opus-4-6': { input: 5, output: 25, cacheRead: 0.50, cacheWrite: 6.25 },
-    'opus': { input: 15, output: 75, cacheRead: 1.50, cacheWrite: 18.75 },
-    'sonnet-4-6': { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 },
-    'sonnet': { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 },
-    'haiku': { input: 0.80, output: 4, cacheRead: 0.08, cacheWrite: 1.00 },
-    default: { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 }
+    'opus-4-6': { input: 5, output: 25, cacheRead: 0.50, cacheWrite: 10.00 },
+    'opus': { input: 15, output: 75, cacheRead: 1.50, cacheWrite: 30.00 },
+    'sonnet-4-6': { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 6.00 },
+    'sonnet': { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 6.00 },
+    'haiku': { input: 1, output: 5, cacheRead: 0.10, cacheWrite: 2.00 },
+    default: { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 6.00 }
 };
 function getPricingForModel(modelName) {
     const lower = modelName.toLowerCase();
